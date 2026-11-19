@@ -1,18 +1,11 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:material_ui/material_ui.dart';
 
 import '../../helpers.dart';
 
 Future<void> decide(WidgetTester tester, String customer, String button) async {
   await tester.tap(inCard(customer, find.text(button)));
   await tester.pumpAndSettle();
-  await tester.tap(
-    find.descendant(
-      of: find.byType(AlertDialog),
-      matching: find.byType(FilledButton),
-    ),
-  );
-  await tester.pumpAndSettle();
+  await tapAlert(tester, button == 'Reject' ? 'Reject' : 'Confirm');
 }
 
 void main() {
@@ -51,8 +44,7 @@ void main() {
     await goTab(tester, 'Requests');
     await tester.tap(inCard('Priya Raj', find.text('Reject')));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Cancel'));
-    await tester.pumpAndSettle();
+    await tapAlert(tester, 'Cancel');
     expect(find.text('Priya Raj'), findsOneWidget);
   });
 

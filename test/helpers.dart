@@ -1,3 +1,4 @@
+import 'package:cupertino_ui/cupertino_ui.dart';
 import 'package:flutter_application_1/app/app.dart';
 import 'package:flutter_application_1/core/data/mock/mock_repositories.dart';
 import 'package:flutter_application_1/core/data/repositories.dart';
@@ -35,6 +36,17 @@ Future<void> pumpApp(
 Future<void> goTab(WidgetTester tester, String label) async {
   await tester.tap(
     find.descendant(of: find.byType(NavigationBar), matching: find.text(label)),
+  );
+  await tester.pumpAndSettle();
+}
+
+/// Taps an action in the open iOS alert.
+Future<void> tapAlert(WidgetTester tester, String label) async {
+  await tester.tap(
+    find.descendant(
+      of: find.byType(CupertinoAlertDialog),
+      matching: find.text(label),
+    ),
   );
   await tester.pumpAndSettle();
 }

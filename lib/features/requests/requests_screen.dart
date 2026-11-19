@@ -6,6 +6,7 @@ import '../../core/models/enums.dart';
 import '../../core/utils/formatters.dart';
 import '../../core/widgets/async_view.dart';
 import '../../core/widgets/confirm_dialog.dart';
+import '../../core/widgets/readable.dart';
 import '../../core/widgets/status_label.dart';
 import '../../theme/manis_theme.dart';
 
@@ -26,13 +27,15 @@ class RequestsScreen extends ConsumerWidget {
         if (pending.isEmpty) {
           return const Center(child: EmptyState('No pending requests'));
         }
-        return ListView.separated(
-          padding: const EdgeInsets.all(ManisSpace.s4),
-          itemCount: pending.length,
-          separatorBuilder: (_, _) => const SizedBox(height: ManisSpace.s3),
-          itemBuilder: (_, i) => _RequestCard(
-            pending[i],
-            key: ValueKey(pending[i].appointment.appointmentId),
+        return Readable(
+          builder: (_, insets) => ListView.separated(
+            padding: insets,
+            itemCount: pending.length,
+            separatorBuilder: (_, _) => const SizedBox(height: ManisSpace.s3),
+            itemBuilder: (_, i) => _RequestCard(
+              pending[i],
+              key: ValueKey(pending[i].appointment.appointmentId),
+            ),
           ),
         );
       },
@@ -63,6 +66,7 @@ class _RequestCardState extends ConsumerState<_RequestCard> {
           ? 'Mark the RM15 deposit from ${b.customer.name} as received and book $slot.'
           : "Cancel ${b.customer.name}'s request for $slot. The slot will be freed.",
       confirmLabel: accept ? 'Confirm' : 'Reject',
+      destructive: !accept,
     );
     if (!ok || !mounted) return;
     final messenger = ScaffoldMessenger.of(context);

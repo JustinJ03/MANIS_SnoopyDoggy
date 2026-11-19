@@ -119,6 +119,9 @@ ThemeData manisTheme(Brightness brightness) {
   final label = t(15, 18, FontWeight.w500);
 
   return ThemeData(
+    // MANIS ships on iPhone/iPad only (PRODUCT.md); pinning iOS also makes
+    // Windows dev runs and widget tests render what the iPhone shows.
+    platform: TargetPlatform.iOS,
     brightness: brightness,
     fontFamily: _sans,
     scaffoldBackgroundColor: c.surface,

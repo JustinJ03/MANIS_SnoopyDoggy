@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:cupertino_ui/cupertino_ui.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
@@ -9,6 +10,7 @@ import '../../core/data/repositories.dart';
 import '../../core/models/service.dart';
 import '../../core/widgets/async_view.dart';
 import '../../core/widgets/confirm_dialog.dart';
+import '../../core/widgets/readable.dart';
 import '../../theme/manis_theme.dart';
 
 /// Add (no [serviceId]) or edit a service.
@@ -92,6 +94,7 @@ class _ServiceFormScreenState extends ConsumerState<ServiceFormScreen> {
       title: 'Delete ${s.name}?',
       message: 'If this service has bookings it will be deactivated instead, so past appointments keep their details.',
       confirmLabel: 'Delete',
+      destructive: true,
     );
     if (!ok || !mounted) return;
     final messenger = ScaffoldMessenger.of(context);
@@ -139,18 +142,42 @@ class _ServiceFormScreenState extends ConsumerState<ServiceFormScreen> {
           if (widget.serviceId != null && _original == null) {
             return const EmptyState('Service not found');
           }
-          return _buildForm(all, enabled);
+          return Readable(
+            builder: (_, insets) => _buildForm(all, enabled, insets),
+          );
         },
       ),
     );
   }
 
-  Widget _buildForm(List<Service> all, bool enabled) {
+  Future<void> _pickType() async {
+    final type = await showCupertinoModalPopup<String>(
+      context: context,
+      builder: (c) => CupertinoActionSheet(
+        title: const Text('Service type'),
+        actions: [
+          for (final t in {...serviceTypes, _type})
+            CupertinoActionSheetAction(
+              isDefaultAction: t == _type,
+              onPressed: () => Navigator.pop(c, t),
+              child: Text(t),
+            ),
+        ],
+        cancelButton: CupertinoActionSheetAction(
+          onPressed: () => Navigator.pop(c),
+          child: const Text('Cancel'),
+        ),
+      ),
+    );
+    if (type != null) setState(() => _type = type);
+  }
+
+  Widget _buildForm(List<Service> all, bool enabled, EdgeInsets insets) {
     final text = Theme.of(context).textTheme;
     return Form(
       key: _form,
       child: ListView(
-        padding: const EdgeInsets.all(ManisSpace.s4),
+        padding: insets,
         children: [
           TextFormField(
             controller: _name,
@@ -170,15 +197,17 @@ class _ServiceFormScreenState extends ConsumerState<ServiceFormScreen> {
             },
           ),
           const SizedBox(height: ManisSpace.s4),
-          DropdownButtonFormField<String>(
-            initialValue: _type,
-            isExpanded: true,
-            decoration: const InputDecoration(labelText: 'Type'),
-            items: [
-              for (final t in {...serviceTypes, _type})
-                DropdownMenuItem(value: t, child: Text(t)),
-            ],
-            onChanged: (v) => setState(() => _type = v ?? _type),
+          ListTile(
+            contentPadding: EdgeInsets.zero,
+            title: const Text('Type'),
+            trailing: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(_type, style: text.bodyMedium),
+                const Icon(Icons.chevron_right),
+              ],
+            ),
+            onTap: _pickType,
           ),
           const SizedBox(height: ManisSpace.s4),
           TextFormField(
@@ -212,7 +241,7 @@ class _ServiceFormScreenState extends ConsumerState<ServiceFormScreen> {
             },
           ),
           const SizedBox(height: ManisSpace.s2),
-          SwitchListTile(
+          SwitchListTile.adaptive(
             contentPadding: EdgeInsets.zero,
             title: const Text('Active'),
             subtitle: Text(

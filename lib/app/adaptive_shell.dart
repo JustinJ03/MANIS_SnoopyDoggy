@@ -61,15 +61,18 @@ class AdaptiveShell extends ConsumerWidget {
           children: [
             SafeArea(
               right: false,
-              child: NavigationRail(
-                scrollable: true,
-                selectedIndex: shell.currentIndex,
-                onDestinationSelected: go,
-                labelType: NavigationRailLabelType.all,
-                destinations: [
-                  for (final (icon, label) in items)
-                    NavigationRailDestination(icon: icon, label: Text(label)),
-                ],
+              child: MediaQuery.withClampedTextScaling(
+                maxScaleFactor: _navMaxTextScale,
+                child: NavigationRail(
+                  scrollable: true,
+                  selectedIndex: shell.currentIndex,
+                  onDestinationSelected: go,
+                  labelType: NavigationRailLabelType.all,
+                  destinations: [
+                    for (final (icon, label) in items)
+                      NavigationRailDestination(icon: icon, label: Text(label)),
+                  ],
+                ),
               ),
             ),
             const VerticalDivider(width: 1),
@@ -80,14 +83,21 @@ class AdaptiveShell extends ConsumerWidget {
     }
     return Scaffold(
       body: body,
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: shell.currentIndex,
-        onDestinationSelected: go,
-        destinations: [
-          for (final (icon, label) in items)
-            NavigationDestination(icon: icon, label: label),
-        ],
+      bottomNavigationBar: MediaQuery.withClampedTextScaling(
+        maxScaleFactor: _navMaxTextScale,
+        child: NavigationBar(
+          selectedIndex: shell.currentIndex,
+          onDestinationSelected: go,
+          destinations: [
+            for (final (icon, label) in items)
+              NavigationDestination(icon: icon, label: label),
+          ],
+        ),
       ),
     );
   }
 }
+
+/// Like the iOS tab bar, labels don't grow with Dynamic Type (five labels
+/// can't fit a 360 pt width otherwise); body text still scales fully.
+const _navMaxTextScale = 1.0;

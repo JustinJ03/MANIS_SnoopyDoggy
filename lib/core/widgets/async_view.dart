@@ -1,3 +1,4 @@
+import 'package:cupertino_ui/cupertino_ui.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 
@@ -19,8 +20,11 @@ class AsyncView<T> extends StatelessWidget {
   @override
   Widget build(BuildContext context) => value.when(
     data: builder,
-    loading: () => const Center(
-      child: CircularProgressIndicator(semanticsLabel: 'Loading'),
+    loading: () => Center(
+      child: Semantics(
+        label: 'Loading',
+        child: const CupertinoActivityIndicator(),
+      ),
     ),
     error: (_, _) => Center(
       child: Padding(

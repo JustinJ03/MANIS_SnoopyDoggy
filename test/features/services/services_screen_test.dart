@@ -66,8 +66,7 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.byTooltip('Delete service'));
     await tester.pumpAndSettle();
-    await tester.tap(find.widgetWithText(FilledButton, 'Delete'));
-    await tester.pumpAndSettle();
+    await tapAlert(tester, 'Delete');
     expect(inCard('Gel Manicure', find.text('Inactive')), findsOneWidget);
     expect(
       find.text(
@@ -83,8 +82,25 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.byTooltip('Delete service'));
     await tester.pumpAndSettle();
-    await tester.tap(find.widgetWithText(FilledButton, 'Delete'));
-    await tester.pumpAndSettle();
+    await tapAlert(tester, 'Delete');
     expect(find.text('French Tips'), findsNothing);
+  });
+
+  testWidgets('service type is chosen from an iOS action sheet', (
+    tester,
+  ) async {
+    await openServices(tester);
+    await tester.tap(find.text('Gel Manicure'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Type'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Nail art'));
+    await tester.pumpAndSettle();
+    await save(tester);
+    // Gel Manicure now sits under the "Nail art" group.
+    expect(
+      tester.getTopLeft(find.text('Gel Manicure')).dy,
+      greaterThan(tester.getTopLeft(find.text('Nail art')).dy),
+    );
   });
 }

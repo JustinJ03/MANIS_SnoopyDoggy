@@ -1,3 +1,4 @@
+import 'package:cupertino_ui/cupertino_ui.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
@@ -6,6 +7,8 @@ import '../../core/data/repositories.dart';
 import '../../core/models/appointment.dart';
 import '../../core/utils/formatters.dart';
 import '../../core/widgets/async_view.dart';
+import '../../core/widgets/readable.dart';
+import '../../core/widgets/sheet_bar.dart';
 import '../../core/widgets/status_label.dart';
 import '../../theme/manis_theme.dart';
 
@@ -30,13 +33,35 @@ class ScheduleScreen extends ConsumerWidget {
     final text = Theme.of(context).textTheme;
 
     Future<void> pickDate() async {
-      final picked = await showDatePicker(
+      var picked = DateTime(day.year, day.month, day.day);
+      final done = await showModalBottomSheet<bool>(
         context: context,
-        initialDate: DateTime(day.year, day.month, day.day),
-        firstDate: DateTime(day.year - 1),
-        lastDate: DateTime(day.year + 1, 12, 31),
+        useRootNavigator: true, // sheets cover the tab bar on iOS
+        useSafeArea: true,
+        builder: (c) => SafeArea(
+          top: false,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              SheetBar(
+                title: 'Pick a date',
+                onDone: () => Navigator.pop(c, true),
+              ),
+              SizedBox(
+                height: 216,
+                child: CupertinoDatePicker(
+                  mode: CupertinoDatePickerMode.date,
+                  initialDateTime: picked,
+                  minimumDate: DateTime(day.year - 1),
+                  maximumDate: DateTime(day.year + 1, 12, 31),
+                  onDateTimeChanged: (d) => picked = d,
+                ),
+              ),
+            ],
+          ),
+        ),
       );
-      if (picked != null) {
+      if (done ?? false) {
         setDay(DateTime.utc(picked.year, picked.month, picked.day));
       }
     }
@@ -52,64 +77,73 @@ class ScheduleScreen extends ConsumerWidget {
           ),
         ],
       ),
-      body: Column(
-        children: [
-          Row(
-            children: [
-              IconButton(
-                tooltip: 'Previous day',
-                icon: const Icon(Icons.chevron_left),
-                onPressed: () => setDay(day.subtract(const Duration(days: 1))),
+      body: Readable(
+        builder: (context, insets) => Column(
+          children: [
+            Padding(
+              // IconButtons carry their own padding; align them to the column.
+              padding: EdgeInsets.symmetric(
+                horizontal: insets.left - ManisSpace.s4,
               ),
-              Expanded(
-                child: Text(
-                  day == todayMyt()
-                      ? 'Today · ${formatDate(day)}'
-                      : formatDate(day),
-                  textAlign: TextAlign.center,
-                  style: text.titleSmall,
-                ),
-              ),
-              IconButton(
-                tooltip: 'Next day',
-                icon: const Icon(Icons.chevron_right),
-                onPressed: () => setDay(day.add(const Duration(days: 1))),
-              ),
-            ],
-          ),
-          Expanded(
-            child: AsyncView(
-              value: ref.watch(bookingsProvider),
-              onRetry: () => ref.invalidate(bookingsProvider),
-              builder: (all) {
-                final list = all
-                    .where((b) => isSameMytDay(b.appointment.startAt, day))
-                    .toList();
-                return ListView(
-                  padding: const EdgeInsets.all(ManisSpace.s4),
-                  children: [
-                    Text(
-                      '${freeSlots(list.map((b) => b.appointment))} of $dailyCap slots free',
+              child: Row(
+                children: [
+                  IconButton(
+                    tooltip: 'Previous day',
+                    icon: const Icon(Icons.chevron_left),
+                    onPressed: () =>
+                        setDay(day.subtract(const Duration(days: 1))),
+                  ),
+                  Expanded(
+                    child: Text(
+                      day == todayMyt()
+                          ? 'Today · ${formatDate(day)}'
+                          : formatDate(day),
+                      textAlign: TextAlign.center,
                       style: text.titleSmall,
                     ),
-                    Text(
-                      'Open ${formatClock(8, 0)} – ${formatClock(21, 0)}',
-                      style: text.bodySmall,
-                    ),
-                    const SizedBox(height: ManisSpace.s4),
-                    if (list.isEmpty)
-                      const EmptyState('No appointments')
-                    else
-                      for (final b in list) ...[
-                        _AppointmentCard(b),
-                        const SizedBox(height: ManisSpace.s3),
-                      ],
-                  ],
-                );
-              },
+                  ),
+                  IconButton(
+                    tooltip: 'Next day',
+                    icon: const Icon(Icons.chevron_right),
+                    onPressed: () => setDay(day.add(const Duration(days: 1))),
+                  ),
+                ],
+              ),
             ),
-          ),
-        ],
+            Expanded(
+              child: AsyncView(
+                value: ref.watch(bookingsProvider),
+                onRetry: () => ref.invalidate(bookingsProvider),
+                builder: (all) {
+                  final list = all
+                      .where((b) => isSameMytDay(b.appointment.startAt, day))
+                      .toList();
+                  return ListView(
+                    padding: insets,
+                    children: [
+                      Text(
+                        '${freeSlots(list.map((b) => b.appointment))} of $dailyCap slots free',
+                        style: text.titleSmall,
+                      ),
+                      Text(
+                        'Open ${formatClock(8, 0)} – ${formatClock(21, 0)}',
+                        style: text.bodySmall,
+                      ),
+                      const SizedBox(height: ManisSpace.s4),
+                      if (list.isEmpty)
+                        const EmptyState('No appointments')
+                      else
+                        for (final b in list) ...[
+                          _AppointmentCard(b),
+                          const SizedBox(height: ManisSpace.s3),
+                        ],
+                    ],
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

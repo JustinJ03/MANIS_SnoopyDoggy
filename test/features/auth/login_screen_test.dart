@@ -45,8 +45,7 @@ void main() {
     await goTab(tester, 'More');
     await tester.tap(find.text('Log out'));
     await tester.pumpAndSettle();
-    await tester.tap(find.widgetWithText(FilledButton, 'Log out'));
-    await tester.pumpAndSettle();
+    await tapAlert(tester, 'Log out');
     expect(find.widgetWithText(FilledButton, 'Log in'), findsOneWidget);
   });
 

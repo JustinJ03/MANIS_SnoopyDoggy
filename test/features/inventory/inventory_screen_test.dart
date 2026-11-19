@@ -1,3 +1,4 @@
+import 'package:cupertino_ui/cupertino_ui.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
 
@@ -43,7 +44,7 @@ void main() {
       find.widgetWithText(TextFormField, 'Quantity (bottles)'),
       '-1',
     );
-    await tester.tap(find.widgetWithText(FilledButton, 'Save'));
+    await tester.tap(find.text('Save'));
     await tester.pumpAndSettle();
     expect(find.text('Cannot be below 0.'), findsOneWidget);
   });
@@ -54,7 +55,7 @@ void main() {
     await openInventory(tester);
     await tester.tap(
       find.descendant(
-        of: find.byType(SegmentedButton<bool>),
+        of: find.byType(CupertinoSlidingSegmentedControl<bool>),
         matching: find.text('Low stock'),
       ),
     );

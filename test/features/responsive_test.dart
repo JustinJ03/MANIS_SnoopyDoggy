@@ -1,4 +1,5 @@
-﻿import 'package:flutter_test/flutter_test.dart';
+﻿import 'package:flutter_application_1/core/widgets/readable.dart';
+import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
 
 import '../helpers.dart';
@@ -32,6 +33,24 @@ void main() {
       await tab('Schedule');
     });
   }
+
+  testWidgets('tab labels ignore Dynamic Type, body text does not', (
+    tester,
+  ) async {
+    await pumpApp(tester, size: const Size(360, 740), textScale: 2);
+    double scaleOf(Finder f) =>
+        MediaQuery.textScalerOf(tester.element(f)).scale(10) / 10;
+    expect(scaleOf(find.text('Customers')), 1);
+    expect(scaleOf(find.text('2 of 5 slots free')), 2);
+  });
+
+  testWidgets('iPad keeps content in a readable column', (tester) async {
+    await pumpApp(tester, size: const Size(1180, 820));
+    expect(
+      tester.getSize(cardOf('Aina Sofea')).width,
+      lessThanOrEqualTo(readableWidth),
+    );
+  });
 
   testWidgets('login fits at 360 dp, 2× text', (tester) async {
     await pumpApp(

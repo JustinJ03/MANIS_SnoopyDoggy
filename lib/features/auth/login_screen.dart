@@ -1,3 +1,4 @@
+import 'package:cupertino_ui/cupertino_ui.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 
@@ -44,15 +45,16 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       if (e.kind == AuthFailureKind.invalidCredentials) {
         setState(() => _error = 'Incorrect email or password.');
       } else {
-        await showDialog<void>(
+        await showCupertinoDialog<void>(
           context: context,
-          builder: (c) => AlertDialog(
+          builder: (c) => CupertinoAlertDialog(
             title: const Text('No connection'),
             content: const Text(
               "Couldn't reach the server. Check your internet connection and try again.",
             ),
             actions: [
-              FilledButton(
+              CupertinoDialogAction(
+                isDefaultAction: true,
                 onPressed: () => Navigator.pop(c),
                 child: const Text('OK'),
               ),
@@ -139,12 +141,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       FilledButton(
                         onPressed: _busy ? null : _submit,
                         child: _busy
-                            ? const SizedBox.square(
-                                dimension: 20,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                  semanticsLabel: 'Signing in',
-                                ),
+                            ? Semantics(
+                                label: 'Signing in',
+                                child: const CupertinoActivityIndicator(),
                               )
                             : const Text('Log in'),
                       ),

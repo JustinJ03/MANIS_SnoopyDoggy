@@ -49,3 +49,8 @@ app.*.map.json
 
 # Supabase keys for --dart-define-from-file (see env.example.json)
 env.json
+
+# Local Impeccable and Claude Code files (kept out of the team repo)
+/PRODUCT.md
+/.impeccable/
+/.claude/
