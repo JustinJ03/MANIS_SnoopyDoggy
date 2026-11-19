@@ -39,7 +39,7 @@ void main() {
   ) async {
     await pumpApp(tester, signedIn: false);
     await logIn(tester, mockOwnerEmail, mockOwnerPassword);
-    expect(find.widgetWithText(AppBar, 'Schedule'), findsOneWidget);
+    expect(find.text('2 of 5 slots free'), findsOneWidget); // on Schedule
     expect(find.byType(NavigationBar), findsOneWidget);
 
     await goTab(tester, 'More');

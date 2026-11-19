@@ -7,16 +7,37 @@ import '../../core/data/repositories.dart';
 import '../../core/models/appointment.dart';
 import '../../core/utils/formatters.dart';
 import '../../core/widgets/async_view.dart';
+import '../../core/widgets/large_title_page.dart';
 import '../../core/widgets/readable.dart';
 import '../../core/widgets/sheet_bar.dart';
 import '../../core/widgets/status_label.dart';
 import '../../theme/manis_theme.dart';
 
+/// The day shown on UI-02. Follows "today" across midnight (the app can sit
+/// in memory overnight) until the owner picks another day.
 class ScheduleDay extends Notifier<DateTime> {
+  var _followsToday = true;
+
   @override
-  DateTime build() => todayMyt();
-  void set(DateTime mytDay) => state = mytDay;
+  DateTime build() {
+    final listener = AppLifecycleListener(
+      onResume: () {
+        if (_followsToday) state = todayMyt();
+      },
+    );
+    ref.onDispose(listener.dispose);
+    return todayMyt();
+  }
+
+  void set(DateTime mytDay) {
+    _followsToday = mytDay == todayMyt();
+    state = mytDay;
+  }
 }
+
+/// Empty or whitespace-only text from the API counts as missing.
+String? _present(String? s) =>
+    (s == null || s.trim().isEmpty) ? null : s.trim();
 
 final scheduleDayProvider = NotifierProvider<ScheduleDay, DateTime>(
   ScheduleDay.new,
@@ -66,30 +87,29 @@ class ScheduleScreen extends ConsumerWidget {
       }
     }
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Schedule'),
-        actions: [
-          IconButton(
-            tooltip: 'Pick a date',
-            icon: const Icon(Icons.calendar_month_outlined),
-            onPressed: pickDate,
-          ),
-        ],
-      ),
+    return LargeTitlePage(
+      title: 'Schedule',
+      actions: [
+        IconButton(
+          tooltip: 'Pick a date',
+          icon: const Icon(CupertinoIcons.calendar),
+          onPressed: pickDate,
+        ),
+      ],
+      // One scroll view: the date bar is its first row, and loading/error
+      // states sit below it, so day navigation never disappears.
       body: Readable(
-        builder: (context, insets) => Column(
-          children: [
-            Padding(
-              // IconButtons carry their own padding; align them to the column.
-              padding: EdgeInsets.symmetric(
-                horizontal: insets.left - ManisSpace.s4,
-              ),
-              child: Row(
+        builder: (context, insets) => PullToRefresh(
+          onRefresh: () => ref.refresh(dayBookingsProvider(day).future),
+          child: ListView(
+            padding: insets,
+            physics: const AlwaysScrollableScrollPhysics(),
+            children: [
+              Row(
                 children: [
                   IconButton(
                     tooltip: 'Previous day',
-                    icon: const Icon(Icons.chevron_left),
+                    icon: const Icon(CupertinoIcons.chevron_left),
                     onPressed: () =>
                         setDay(day.subtract(const Duration(days: 1))),
                   ),
@@ -104,45 +124,40 @@ class ScheduleScreen extends ConsumerWidget {
                   ),
                   IconButton(
                     tooltip: 'Next day',
-                    icon: const Icon(Icons.chevron_right),
+                    icon: const Icon(CupertinoIcons.chevron_right),
                     onPressed: () => setDay(day.add(const Duration(days: 1))),
                   ),
                 ],
               ),
-            ),
-            Expanded(
-              child: AsyncView(
-                value: ref.watch(bookingsProvider),
-                onRetry: () => ref.invalidate(bookingsProvider),
-                builder: (all) {
-                  final list = all
-                      .where((b) => isSameMytDay(b.appointment.startAt, day))
-                      .toList();
-                  return ListView(
-                    padding: insets,
-                    children: [
-                      Text(
-                        '${freeSlots(list.map((b) => b.appointment))} of $dailyCap slots free',
-                        style: text.titleSmall,
-                      ),
-                      Text(
-                        'Open ${formatClock(8, 0)} – ${formatClock(21, 0)}',
-                        style: text.bodySmall,
-                      ),
-                      const SizedBox(height: ManisSpace.s4),
-                      if (list.isEmpty)
-                        const EmptyState('No appointments')
-                      else
-                        for (final b in list) ...[
-                          _AppointmentCard(b),
-                          const SizedBox(height: ManisSpace.s3),
-                        ],
-                    ],
-                  );
-                },
+              const SizedBox(height: ManisSpace.s4),
+              AsyncView(
+                value: ref.watch(dayBookingsProvider(day)),
+                onRetry: () => ref.invalidate(dayBookingsProvider(day)),
+                builder: (list) => Column(
+                  // Stretch so cards fill the column, as in a ListView.
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Text(
+                      '${freeSlots(list.map((b) => b.appointment))} of $dailyCap slots free',
+                      style: text.titleSmall,
+                    ),
+                    Text(
+                      'Open ${formatClock(8, 0)} – ${formatClock(21, 0)}',
+                      style: text.bodySmall,
+                    ),
+                    const SizedBox(height: ManisSpace.s4),
+                    if (list.isEmpty)
+                      const Center(child: EmptyState('No appointments'))
+                    else
+                      for (final b in list) ...[
+                        _AppointmentCard(b),
+                        const SizedBox(height: ManisSpace.s3),
+                      ],
+                  ],
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -156,51 +171,58 @@ class _AppointmentCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final a = booking.appointment;
-    final profile = booking.customer.profile;
+    final allergy = _present(booking.customer.profile.allergyAlert);
+    final shape = _present(booking.customer.profile.preferredNailShape);
     final text = Theme.of(context).textTheme;
     return Card(
       clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: () => context.push('/appointments/${a.appointmentId}'),
-        child: Padding(
-          padding: const EdgeInsets.all(ManisSpace.s4),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Wrap(
-                spacing: ManisSpace.s2,
-                runSpacing: ManisSpace.s1,
-                crossAxisAlignment: WrapCrossAlignment.center,
+      // VoiceOver: one element that reads the whole card, announced as a
+      // button that opens the details.
+      child: MergeSemantics(
+        child: Semantics(
+          button: true,
+          hint: 'Opens appointment details',
+          child: InkWell(
+            onTap: () => context.push('/appointments/${a.appointmentId}'),
+            child: Padding(
+              padding: const EdgeInsets.all(ManisSpace.s4),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    formatTimeRange(a.startAt, a.endAt),
-                    style: text.titleSmall,
+                  Wrap(
+                    spacing: ManisSpace.s2,
+                    runSpacing: ManisSpace.s1,
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    children: [
+                      Text(
+                        formatTimeRange(a.startAt, a.endAt),
+                        style: text.titleSmall,
+                      ),
+                      StatusLabel.appointment(a.status),
+                    ],
                   ),
-                  StatusLabel.appointment(a.status),
+                  const SizedBox(height: ManisSpace.s2),
+                  Text(booking.customer.name, style: text.bodyMedium),
+                  Text(booking.service.name, style: text.bodySmall),
+                  if (allergy != null || shape != null) ...[
+                    const SizedBox(height: ManisSpace.s2),
+                    Wrap(
+                      spacing: ManisSpace.s2,
+                      runSpacing: ManisSpace.s2,
+                      children: [
+                        if (allergy != null)
+                          StatusLabel(
+                            'Allergy: $allergy',
+                            tone: Tone.danger,
+                            icon: CupertinoIcons.exclamationmark_triangle,
+                          ),
+                        if (shape != null) StatusLabel('Shape: $shape'),
+                      ],
+                    ),
+                  ],
                 ],
               ),
-              const SizedBox(height: ManisSpace.s2),
-              Text(booking.customer.name, style: text.bodyMedium),
-              Text(booking.service.name, style: text.bodySmall),
-              if (profile.allergyAlert != null ||
-                  profile.preferredNailShape != null) ...[
-                const SizedBox(height: ManisSpace.s2),
-                Wrap(
-                  spacing: ManisSpace.s2,
-                  runSpacing: ManisSpace.s2,
-                  children: [
-                    if (profile.allergyAlert case final allergy?)
-                      StatusLabel(
-                        'Allergy: $allergy',
-                        tone: Tone.danger,
-                        icon: Icons.warning_amber_rounded,
-                      ),
-                    if (profile.preferredNailShape case final shape?)
-                      StatusLabel('Shape: $shape'),
-                  ],
-                ),
-              ],
-            ],
+            ),
           ),
         ),
       ),

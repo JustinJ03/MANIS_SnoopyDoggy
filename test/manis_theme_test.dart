@@ -1,6 +1,6 @@
 import 'dart:math';
 
-import 'package:material_ui/material_ui.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:flutter_application_1/theme/manis_theme.dart';
@@ -49,5 +49,28 @@ void main() {
       manisTheme(Brightness.dark).colorScheme.primary,
       ManisColors.dark.action,
     );
+  });
+
+  testWidgets('brand fonts are bundled for every weight the theme uses', (
+    tester,
+  ) async {
+    final manifest = await rootBundle.loadString('FontManifest.json');
+    for (final asset in [
+      'assets/fonts/DMSans-Regular.ttf',
+      'assets/fonts/DMSans-Medium.ttf',
+      'assets/fonts/DMSans-SemiBold.ttf',
+      'assets/fonts/DMSerifDisplay-Regular.ttf',
+    ]) {
+      expect(manifest, contains(asset));
+      expect((await rootBundle.load(asset)).lengthInBytes, greaterThan(0));
+    }
+  });
+
+  test('input and label roles stay on the token scale', () {
+    final t = manisTheme(Brightness.light).textTheme;
+    expect(t.bodyLarge?.fontFamily, 'DM Sans');
+    expect(t.bodyLarge?.letterSpacing, 0);
+    expect(t.labelMedium?.fontSize, 12);
+    expect(t.labelMedium?.letterSpacing, 0);
   });
 }

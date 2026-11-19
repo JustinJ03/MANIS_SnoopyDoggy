@@ -114,8 +114,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                 : 'Hide password',
                             icon: Icon(
                               _obscure
-                                  ? Icons.visibility_outlined
-                                  : Icons.visibility_off_outlined,
+                                  ? CupertinoIcons.eye
+                                  : CupertinoIcons.eye_slash,
                             ),
                             onPressed: () =>
                                 setState(() => _obscure = !_obscure),

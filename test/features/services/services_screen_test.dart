@@ -35,6 +35,36 @@ void main() {
     expect(find.text('Duration must be 120–180 minutes.'), findsOneWidget);
   });
 
+  testWidgets('prices that parse but are not money are rejected', (
+    tester,
+  ) async {
+    await openServices(tester);
+    await tester.tap(find.byTooltip('Add service'));
+    await tester.pumpAndSettle();
+    for (final bad in ['NaN', 'Infinity', '1e3', '60.555', '-5']) {
+      await tester.enterText(field('Price'), bad);
+      await save(tester);
+      expect(
+        find.text('Enter a price like 60 or 60.50.'),
+        findsOneWidget,
+        reason: bad,
+      );
+    }
+  });
+
+  testWidgets('duplicate check ignores extra spaces', (tester) async {
+    await openServices(tester);
+    await tester.tap(find.byTooltip('Add service'));
+    await tester.pumpAndSettle();
+    await tester.enterText(field('Name'), '  gel   manicure ');
+    await tester.enterText(field('Price'), '60');
+    await save(tester);
+    expect(
+      find.text('A service called "gel manicure" already exists.'),
+      findsOneWidget,
+    );
+  });
+
   testWidgets('duplicate name is flagged', (tester) async {
     await openServices(tester);
     await tester.tap(find.byTooltip('Add service'));

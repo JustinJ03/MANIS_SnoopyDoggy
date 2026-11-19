@@ -7,6 +7,7 @@ import '../../core/models/enums.dart';
 import '../../core/models/inventory_item.dart';
 import '../../core/widgets/async_view.dart';
 import '../../core/widgets/confirm_dialog.dart';
+import '../../core/widgets/large_title_page.dart';
 import '../../core/widgets/readable.dart';
 import '../../core/widgets/sheet_bar.dart';
 import '../../core/widgets/status_label.dart';
@@ -26,16 +27,27 @@ class InventoryScreen extends ConsumerStatefulWidget {
 class _InventoryScreenState extends ConsumerState<InventoryScreen> {
   var _lowOnly = false;
 
+  /// Items with a save in flight. Their controls stay disabled until the list
+  /// is re-read, so a quick second tap can't save from a stale quantity.
+  final _saving = <String>{};
+
   Future<void> _save(InventoryItem item) async {
     final messenger = ScaffoldMessenger.of(context);
+    setState(() => _saving.add(item.itemId));
     try {
       await ref.read(inventoryRepositoryProvider).save(item);
-      ref.invalidate(inventoryProvider);
       showSnack(messenger, 'Saved ${item.name}: ${_qty(item)}.');
+      ref.invalidate(inventoryProvider);
+      await ref.read(inventoryProvider.future);
     } on ArgumentError catch (e) {
       showSnack(messenger, '${e.message}');
     } catch (_) {
-      showSnack(messenger, "Couldn't save. Try again.");
+      showSnack(
+        messenger,
+        "Couldn't save. Check your connection and try again.",
+      );
+    } finally {
+      if (mounted) setState(() => _saving.remove(item.itemId));
     }
   }
 
@@ -54,108 +66,115 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
   Widget build(BuildContext context) {
     final online = ref.watch(onlineProvider);
     final text = Theme.of(context).textTheme;
-    return Scaffold(
-      appBar: AppBar(title: const Text('Inventory')),
+    // One scroll view: the filter is its first row, and loading/error states
+    // sit below it.
+    final value = ref.watch(inventoryProvider);
+    final items = [
+      for (final i in value.value ?? const <InventoryItem>[])
+        if (!_lowOnly || i.level != StockLevel.inStock) i,
+    ];
+    return LargeTitlePage(
+      title: 'Inventory',
       body: Readable(
-        builder: (context, insets) => Column(
-          children: [
-            Padding(
-              padding: EdgeInsets.symmetric(horizontal: insets.left),
-              child: SizedBox(
-                width: double.infinity,
-                child: CupertinoSlidingSegmentedControl<bool>(
-                  groupValue: _lowOnly,
-                  onValueChanged: (v) => setState(() => _lowOnly = v ?? false),
-                  children: const {false: Text('All'), true: Text('Low stock')},
-                ),
-              ),
-            ),
-            Expanded(
-              child: AsyncView(
-                value: ref.watch(inventoryProvider),
-                onRetry: () => ref.invalidate(inventoryProvider),
-                builder: (all) {
-                  final items = _lowOnly
-                      ? all.where((i) => i.level != StockLevel.inStock).toList()
-                      : all;
-                  if (items.isEmpty) {
-                    return EmptyState(
-                      _lowOnly ? 'Nothing is low on stock' : 'No items yet',
-                    );
-                  }
-                  return ListView.separated(
-                    padding: insets,
-                    itemCount: items.length,
-                    separatorBuilder: (_, _) =>
-                        const SizedBox(height: ManisSpace.s3),
-                    itemBuilder: (_, n) {
-                      final i = items[n];
-                      return Card(
-                        child: Padding(
-                          padding: const EdgeInsets.all(ManisSpace.s4),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Wrap(
-                                spacing: ManisSpace.s2,
-                                runSpacing: ManisSpace.s1,
-                                crossAxisAlignment: WrapCrossAlignment.center,
-                                children: [
-                                  Text(i.name, style: text.titleSmall),
-                                  StatusLabel.stock(i.level),
-                                ],
-                              ),
-                              Text(
-                                '${_qty(i)} · reorder at ${i.reorderLevel}',
-                                style: text.bodySmall,
-                              ),
-                              Row(
-                                children: [
-                                  IconButton(
-                                    tooltip: 'Use one ${i.name}',
-                                    icon: const Icon(Icons.remove),
-                                    onPressed: online && i.quantity > 0
-                                        ? () => _save(
-                                            i.copyWith(
-                                              quantity: i.quantity - 1,
-                                            ),
-                                          )
-                                        : null,
-                                  ),
-                                  IconButton(
-                                    tooltip: 'Add one ${i.name}',
-                                    icon: const Icon(Icons.add),
-                                    onPressed: online
-                                        ? () => _save(
-                                            i.copyWith(
-                                              quantity: i.quantity + 1,
-                                            ),
-                                          )
-                                        : null,
-                                  ),
-                                  const Spacer(),
-                                  IconButton(
-                                    tooltip: 'Edit ${i.name}',
-                                    icon: const Icon(Icons.edit_outlined),
-                                    onPressed: online ? () => _edit(i) : null,
-                                  ),
-                                ],
-                              ),
-                            ],
-                          ),
-                        ),
-                      );
+        builder: (context, insets) => PullToRefresh(
+          onRefresh: () => ref.refresh(inventoryProvider.future),
+          child: ListView.separated(
+            padding: insets,
+            physics: const AlwaysScrollableScrollPhysics(),
+            // Row 0 is the filter; row 1 the loading/error/empty state when
+            // there are no items to show; otherwise one row per item.
+            itemCount:
+                1 + (value.hasValue && items.isNotEmpty ? items.length : 1),
+            separatorBuilder: (_, _) => const SizedBox(height: ManisSpace.s3),
+            itemBuilder: (_, n) {
+              if (n == 0) {
+                return SizedBox(
+                  width: double.infinity,
+                  child: CupertinoSlidingSegmentedControl<bool>(
+                    groupValue: _lowOnly,
+                    onValueChanged: (v) =>
+                        setState(() => _lowOnly = v ?? false),
+                    children: const {
+                      false: Text('All'),
+                      true: Text('Low stock'),
                     },
-                  );
-                },
-              ),
-            ),
-          ],
+                  ),
+                );
+              }
+              if (!value.hasValue || items.isEmpty) {
+                return AsyncView(
+                  value: value,
+                  onRetry: () => ref.invalidate(inventoryProvider),
+                  builder: (_) => Center(
+                    child: EmptyState(
+                      _lowOnly ? 'Nothing is low on stock' : 'No items yet',
+                    ),
+                  ),
+                );
+              }
+              final i = items[n - 1];
+              final can = online && !_saving.contains(i.itemId);
+              return Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(ManisSpace.s4),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Wrap(
+                        spacing: ManisSpace.s2,
+                        runSpacing: ManisSpace.s1,
+                        crossAxisAlignment: WrapCrossAlignment.center,
+                        children: [
+                          Text(i.name, style: text.titleSmall),
+                          StatusLabel.stock(i.level),
+                        ],
+                      ),
+                      Text(
+                        '${_qty(i)} · reorder at ${i.reorderLevel}',
+                        style: text.bodySmall,
+                      ),
+                      Row(
+                        children: [
+                          IconButton(
+                            tooltip: 'Use one ${i.name}',
+                            icon: const Icon(CupertinoIcons.minus),
+                            onPressed: can && i.quantity > 0
+                                ? () => _save(
+                                    i.copyWith(quantity: i.quantity - 1),
+                                  )
+                                : null,
+                          ),
+                          IconButton(
+                            tooltip: 'Add one ${i.name}',
+                            icon: const Icon(CupertinoIcons.plus),
+                            onPressed: can && i.quantity < maxStock
+                                ? () => _save(
+                                    i.copyWith(quantity: i.quantity + 1),
+                                  )
+                                : null,
+                          ),
+                          const Spacer(),
+                          IconButton(
+                            tooltip: 'Edit ${i.name}',
+                            icon: const Icon(CupertinoIcons.pencil),
+                            onPressed: can ? () => _edit(i) : null,
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            },
+          ),
         ),
       ),
     );
   }
 }
+
+/// Upper bound for a typed or stepped quantity; catches slips like 1000.
+const maxStock = 999;
 
 /// iOS-style sheet for editing quantity and reorder level.
 class _EditStockSheet extends StatefulWidget {
@@ -184,6 +203,7 @@ class _EditStockSheetState extends State<_EditStockSheet> {
     final n = int.tryParse(v?.trim() ?? '');
     if (n == null) return 'Enter a whole number.';
     if (n < 0) return 'Cannot be below 0.';
+    if (n > maxStock) return 'Enter $maxStock or less.';
     return null;
   }
 

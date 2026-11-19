@@ -3,6 +3,7 @@ import '../../models/customer.dart';
 import '../../models/enums.dart';
 import '../../models/inventory_item.dart';
 import '../../models/service.dart';
+import '../../utils/formatters.dart';
 import '../repositories.dart';
 import 'seed.dart';
 
@@ -39,9 +40,27 @@ class MockAppointmentRepository implements AppointmentRepository {
   final List<Appointment> _items;
 
   @override
-  Future<List<Appointment>> all() async {
+  Future<List<Appointment>> forDay(DateTime mytDay) async {
     await _wait();
-    return List.of(_items);
+    return [
+      for (final a in _items)
+        if (isSameMytDay(a.startAt, mytDay)) a,
+    ];
+  }
+
+  @override
+  Future<List<Appointment>> pending() async {
+    await _wait();
+    return [
+      for (final a in _items)
+        if (a.status == AppointmentStatus.pending) a,
+    ];
+  }
+
+  @override
+  Future<bool> hasBookings(String serviceId) async {
+    await _wait();
+    return _items.any((a) => a.serviceId == serviceId);
   }
 
   @override
@@ -59,9 +78,13 @@ class MockAppointmentRepository implements AppointmentRepository {
 
 class MockCustomerRepository implements CustomerRepository {
   @override
-  Future<List<Customer>> all() async {
+  Future<List<Customer>> byIds(Set<String> customerIds) async {
+    if (customerIds.isEmpty) return const [];
     await _wait();
-    return List.of(seedCustomers);
+    return [
+      for (final c in seedCustomers)
+        if (customerIds.contains(c.customerId)) c,
+    ];
   }
 }
 
@@ -100,9 +123,7 @@ class MockServiceRepository implements ServiceRepository {
 
   @override
   Future<bool> delete(String serviceId) async {
-    final booked = (await _appointments.all()).any(
-      (a) => a.serviceId == serviceId,
-    );
+    final booked = await _appointments.hasBookings(serviceId);
     final i = _items.indexWhere((s) => s.serviceId == serviceId);
     if (i < 0) throw StateError('Service not found.');
     if (booked) {

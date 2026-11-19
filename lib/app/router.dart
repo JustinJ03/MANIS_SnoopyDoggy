@@ -43,7 +43,12 @@ final routerProvider = Provider<GoRouter>((ref) {
           branch(page('/schedule', const ScheduleScreen())),
           branch(page('/requests', const RequestsScreen())),
           branch(page('/inventory', const InventoryScreen())),
-          branch(page('/customers', const PlaceholderScreen('Customers'))),
+          branch(
+            page(
+              '/customers',
+              const PlaceholderScreen('Customers', tabRoot: true),
+            ),
+          ),
           branch(
             page('/more', const MoreScreen(), [
               page('services', const ServicesScreen(), [

@@ -1,3 +1,4 @@
+import 'package:cupertino_ui/cupertino_ui.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
@@ -23,7 +24,7 @@ class ServicesScreen extends ConsumerWidget {
         actions: [
           IconButton(
             tooltip: 'Add service',
-            icon: const Icon(Icons.add),
+            icon: const Icon(CupertinoIcons.plus),
             onPressed: online ? () => context.go('/more/services/new') : null,
           ),
         ],

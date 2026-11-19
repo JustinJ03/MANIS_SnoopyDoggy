@@ -70,7 +70,13 @@ class StatusLabel extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           if (icon != null) ...[
-            Icon(icon, size: 16, color: fg),
+            // Scales with Dynamic Type so the allergy warning never shrinks
+            // relative to its text.
+            Icon(
+              icon,
+              size: MediaQuery.textScalerOf(context).scale(16),
+              color: fg,
+            ),
             const SizedBox(width: ManisSpace.s1),
           ],
           Flexible(

@@ -11,6 +11,9 @@ DateTime todayMyt([DateTime? now]) {
   return DateTime.utc(t.year, t.month, t.day);
 }
 
+/// The MYT calendar day (UTC midnight) a UTC instant falls on.
+DateTime mytDayOf(DateTime utc) => todayMyt(utc);
+
 bool isSameMytDay(DateTime utc, DateTime mytDay) {
   final t = toMyt(utc);
   return t.year == mytDay.year &&

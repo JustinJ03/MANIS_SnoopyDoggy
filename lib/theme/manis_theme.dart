@@ -87,10 +87,12 @@ abstract final class ManisRadius {
   static const sm = 12.0, md = 16.0, lg = 28.0, pill = 999.0;
 }
 
-// shortcut: fonts fall back to the platform font until DM Sans / DM Serif Display
-// files are added under assets/fonts and declared in pubspec.yaml with these family names.
+// Bundled in assets/fonts (DM Sans 400/500/600, DM Serif Display 400) and
+// declared in pubspec.yaml under these family names.
 const _sans = 'DM Sans';
 const _serif = 'DM Serif Display';
+// No tabular figures: DM Sans's tnum also widens colons and spaces, which
+// turns "10:00 AM" into "10 : 00  AM".
 
 ThemeData manisTheme(Brightness brightness) {
   final c = brightness == Brightness.dark
@@ -122,6 +124,9 @@ ThemeData manisTheme(Brightness brightness) {
     // MANIS ships on iPhone/iPad only (PRODUCT.md); pinning iOS also makes
     // Windows dev runs and widget tests render what the iPhone shows.
     platform: TargetPlatform.iOS,
+    // iOS has no ink ripple; taps show the pressed highlight instead.
+    splashFactory: NoSplash.splashFactory,
+    highlightColor: c.line.withValues(alpha: 0.6),
     brightness: brightness,
     fontFamily: _sans,
     scaffoldBackgroundColor: c.surface,
@@ -156,8 +161,13 @@ ThemeData manisTheme(Brightness brightness) {
       headlineSmall: t(28, 32, FontWeight.w400, family: _serif), // title
       titleLarge: t(24, 28, FontWeight.w400, family: _serif), // price
       titleSmall: t(15, 20, FontWeight.w600), // heading
+      // Text fields, list and switch rows. Without it Material's default
+      // (16/24, +0.5 tracking) applies, off the token scale.
+      bodyLarge: t(16, 22, FontWeight.w400), // input
       bodyMedium: t(14, 20, FontWeight.w400), // body
       labelLarge: t(14, 18, FontWeight.w500), // label
+      // Status labels and tab labels; caption size at label weight.
+      labelMedium: t(12, 16, FontWeight.w500), // label-sm
       bodySmall: t(12, 16, FontWeight.w400, color: c.inkMuted), // caption
       labelSmall: t(11, 14, FontWeight.w500, spacing: 2.64), // overline, 0.24em
     ),

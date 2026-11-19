@@ -3,6 +3,7 @@ import 'package:flutter_application_1/app/app.dart';
 import 'package:flutter_application_1/core/data/mock/mock_repositories.dart';
 import 'package:flutter_application_1/core/data/repositories.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/misc.dart' show Override;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
 
@@ -12,10 +13,16 @@ Future<void> pumpApp(
   bool signedIn = true,
   Size size = const Size(390, 1600),
   double textScale = 1,
+  EdgeInsets viewPadding = EdgeInsets.zero,
+  List<Override> overrides = const [],
 }) async {
   mockLatency = Duration.zero;
   tester.view.physicalSize = size;
   tester.view.devicePixelRatio = 1;
+  tester.view.padding = FakeViewPadding(
+    top: viewPadding.top,
+    bottom: viewPadding.bottom,
+  );
   tester.platformDispatcher.textScaleFactorTestValue = textScale;
   addTearDown(tester.view.reset);
   addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
@@ -25,6 +32,7 @@ Future<void> pumpApp(
         authRepositoryProvider.overrideWithValue(
           MockAuthRepository(signedIn: signedIn),
         ),
+        ...overrides,
       ],
       child: const ManisApp(),
     ),

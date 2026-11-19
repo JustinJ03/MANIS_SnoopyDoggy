@@ -13,6 +13,15 @@ import '../../core/widgets/confirm_dialog.dart';
 import '../../core/widgets/readable.dart';
 import '../../theme/manis_theme.dart';
 
+const maxNameLength = 60;
+
+/// Up to RM 9999.99, at most two decimals.
+final _pricePattern = RegExp(r'^\d{1,4}(\.\d{1,2})?$');
+
+/// Trims and collapses inner whitespace, so "Gel  Manicure " matches
+/// "Gel Manicure" in the duplicate check.
+String _clean(String s) => s.trim().replaceAll(RegExp(r'\s+'), ' ');
+
 /// Add (no [serviceId]) or edit a service.
 class ServiceFormScreen extends ConsumerStatefulWidget {
   const ServiceFormScreen({super.key, this.serviceId});
@@ -56,9 +65,25 @@ class _ServiceFormScreenState extends ConsumerState<ServiceFormScreen> {
   }
 
   Future<void> _pickPhoto() async {
-    // shortcut: local preview only; upload to storage is M3.
-    final file = await ImagePicker().pickImage(source: ImageSource.gallery);
-    if (file != null) setState(() => _photoPath = file.path);
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      // shortcut: local preview only; upload to storage is M3.
+      // A 12 MP camera photo is ~4032×3024; 2048 px is plenty for a design
+      // reference and is the file M3 will upload.
+      final file = await ImagePicker().pickImage(
+        source: ImageSource.gallery,
+        maxWidth: 2048,
+        maxHeight: 2048,
+        imageQuality: 85,
+      );
+      if (file != null && mounted) setState(() => _photoPath = file.path);
+    } catch (_) {
+      // Photo access denied or the picker failed to open.
+      showSnack(
+        messenger,
+        "Couldn't open your photos. Allow photo access for MANIS in Settings.",
+      );
+    }
   }
 
   Future<void> _save() async {
@@ -66,7 +91,7 @@ class _ServiceFormScreenState extends ConsumerState<ServiceFormScreen> {
     final messenger = ScaffoldMessenger.of(context);
     final service = Service(
       serviceId: _original?.serviceId ?? '',
-      name: _name.text.trim(),
+      name: _clean(_name.text),
       serviceType: _type,
       priceRm: double.parse(_price.text.trim()),
       durationMax: int.parse(_duration.text.trim()),
@@ -75,8 +100,8 @@ class _ServiceFormScreenState extends ConsumerState<ServiceFormScreen> {
     setState(() => _saving = true);
     try {
       await ref.read(serviceRepositoryProvider).save(service);
+      // Booking providers watch servicesProvider, so names refresh too.
       ref.invalidate(servicesProvider);
-      ref.invalidate(bookingsProvider);
       showSnack(messenger, 'Saved ${service.name}.');
       if (mounted) context.go('/more/services');
     } catch (_) {
@@ -130,7 +155,7 @@ class _ServiceFormScreenState extends ConsumerState<ServiceFormScreen> {
           if (widget.serviceId != null)
             IconButton(
               tooltip: 'Delete service',
-              icon: const Icon(Icons.delete_outline),
+              icon: const Icon(CupertinoIcons.delete),
               onPressed: enabled && _original != null ? _delete : null,
             ),
         ],
@@ -184,12 +209,15 @@ class _ServiceFormScreenState extends ConsumerState<ServiceFormScreen> {
             decoration: const InputDecoration(labelText: 'Name'),
             textCapitalization: TextCapitalization.words,
             validator: (v) {
-              final name = v?.trim() ?? '';
+              final name = _clean(v ?? '');
               if (name.isEmpty) return 'Enter a name.';
+              if (name.length > maxNameLength) {
+                return 'Keep the name to $maxNameLength characters or fewer.';
+              }
               final duplicate = all.any(
                 (s) =>
                     s.serviceId != _original?.serviceId &&
-                    s.name.toLowerCase() == name.toLowerCase(),
+                    _clean(s.name).toLowerCase() == name.toLowerCase(),
               );
               return duplicate
                   ? 'A service called "$name" already exists.'
@@ -204,7 +232,7 @@ class _ServiceFormScreenState extends ConsumerState<ServiceFormScreen> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 Text(_type, style: text.bodyMedium),
-                const Icon(Icons.chevron_right),
+                const Icon(CupertinoIcons.chevron_forward),
               ],
             ),
             onTap: _pickType,
@@ -218,9 +246,14 @@ class _ServiceFormScreenState extends ConsumerState<ServiceFormScreen> {
             ),
             keyboardType: const TextInputType.numberWithOptions(decimal: true),
             validator: (v) {
-              final p = double.tryParse(v?.trim() ?? '');
-              if (p == null) return 'Enter a price.';
-              if (p <= 0) return 'Price must be more than RM 0.';
+              final s = v?.trim() ?? '';
+              if (s.isEmpty) return 'Enter a price.';
+              // Rejects NaN, Infinity, 1e3 and sub-sen amounts that
+              // double.tryParse would accept.
+              if (!_pricePattern.hasMatch(s)) {
+                return 'Enter a price like 60 or 60.50.';
+              }
+              if (double.parse(s) <= 0) return 'Price must be more than RM 0.';
               return null;
             },
           ),
@@ -258,11 +291,19 @@ class _ServiceFormScreenState extends ConsumerState<ServiceFormScreen> {
               padding: const EdgeInsets.only(bottom: ManisSpace.s2),
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(ManisRadius.md),
-                child: Image.file(
-                  File(path),
-                  height: 180,
-                  fit: BoxFit.cover,
-                  semanticLabel: 'Design photo preview',
+                // Decode at the preview's pixel width, not the photo's:
+                // ~3.5 MB in memory instead of ~48 MB for a 12 MP original.
+                child: LayoutBuilder(
+                  builder: (context, box) => Image.file(
+                    File(path),
+                    width: double.infinity,
+                    height: 180,
+                    fit: BoxFit.cover,
+                    cacheWidth:
+                        (box.maxWidth * MediaQuery.devicePixelRatioOf(context))
+                            .round(),
+                    semanticLabel: 'Design photo preview',
+                  ),
                 ),
               ),
             ),
@@ -270,7 +311,7 @@ class _ServiceFormScreenState extends ConsumerState<ServiceFormScreen> {
             alignment: Alignment.centerLeft,
             child: OutlinedButton.icon(
               onPressed: _pickPhoto,
-              icon: const Icon(Icons.photo_library_outlined),
+              icon: const Icon(CupertinoIcons.photo_on_rectangle),
               label: Text(_photoPath == null ? 'Pick photo' : 'Change photo'),
             ),
           ),

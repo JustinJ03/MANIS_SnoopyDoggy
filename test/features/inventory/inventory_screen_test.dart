@@ -31,7 +31,10 @@ void main() {
     expect(
       tester
           .widget<IconButton>(
-            inCard(remover, find.widgetWithIcon(IconButton, Icons.remove)),
+            inCard(
+              remover,
+              find.widgetWithIcon(IconButton, CupertinoIcons.minus),
+            ),
           )
           .onPressed,
       isNull,

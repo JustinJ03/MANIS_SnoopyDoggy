@@ -1,3 +1,4 @@
+import 'package:cupertino_ui/cupertino_ui.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 
@@ -6,6 +7,7 @@ import '../../core/models/enums.dart';
 import '../../core/utils/formatters.dart';
 import '../../core/widgets/async_view.dart';
 import '../../core/widgets/confirm_dialog.dart';
+import '../../core/widgets/large_title_page.dart';
 import '../../core/widgets/readable.dart';
 import '../../core/widgets/status_label.dart';
 import '../../theme/manis_theme.dart';
@@ -15,27 +17,39 @@ class RequestsScreen extends ConsumerWidget {
   const RequestsScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) => Scaffold(
-    appBar: AppBar(title: const Text('Requests')),
+  Widget build(BuildContext context, WidgetRef ref) => LargeTitlePage(
+    title: 'Requests',
     body: AsyncView(
-      value: ref.watch(bookingsProvider),
-      onRetry: () => ref.invalidate(bookingsProvider),
-      builder: (all) {
-        final pending = all
-            .where((b) => b.appointment.status == AppointmentStatus.pending)
-            .toList();
-        if (pending.isEmpty) {
-          return const Center(child: EmptyState('No pending requests'));
-        }
+      value: ref.watch(pendingBookingsProvider),
+      onRetry: () => ref.invalidate(pendingBookingsProvider),
+      builder: (pending) {
+        // New requests arrive from the WhatsApp bot, so pull-to-refresh
+        // works on the empty list too.
         return Readable(
-          builder: (_, insets) => ListView.separated(
-            padding: insets,
-            itemCount: pending.length,
-            separatorBuilder: (_, _) => const SizedBox(height: ManisSpace.s3),
-            itemBuilder: (_, i) => _RequestCard(
-              pending[i],
-              key: ValueKey(pending[i].appointment.appointmentId),
-            ),
+          builder: (_, insets) => PullToRefresh(
+            onRefresh: () => ref.refresh(pendingBookingsProvider.future),
+            child: pending.isEmpty
+                ? ListView(
+                    padding: insets,
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    children: const [
+                      EmptyState(
+                        'No pending requests',
+                        hint: 'Pull down to check for new requests.',
+                      ),
+                    ],
+                  )
+                : ListView.separated(
+                    padding: insets,
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    itemCount: pending.length,
+                    separatorBuilder: (_, _) =>
+                        const SizedBox(height: ManisSpace.s3),
+                    itemBuilder: (_, i) => _RequestCard(
+                      pending[i],
+                      key: ValueKey(pending[i].appointment.appointmentId),
+                    ),
+                  ),
           ),
         );
       },
@@ -79,15 +93,26 @@ class _RequestCardState extends ConsumerState<_RequestCard> {
             accept ? AppointmentStatus.confirmed : AppointmentStatus.cancelled,
             depositStatus: accept ? DepositStatus.received : null,
           );
-      ref.invalidate(bookingsProvider);
+      invalidateBookings(ref, a);
       showSnack(
         messenger,
         accept
             ? 'Confirmed ${b.customer.name}. Deposit received.'
             : "Rejected ${b.customer.name}'s request. Slot freed.",
       );
+    } on StateError {
+      // BR-07 refused: the request was already confirmed, cancelled or
+      // removed elsewhere (bot, another device). Retrying can't help.
+      invalidateBookings(ref, a);
+      showSnack(
+        messenger,
+        "${b.customer.name}'s request was already updated. The list is refreshed.",
+      );
     } catch (_) {
-      showSnack(messenger, "Couldn't save. Try again.");
+      showSnack(
+        messenger,
+        "Couldn't save. Check your connection and try again.",
+      );
     } finally {
       if (mounted) setState(() => _saving = false);
     }
@@ -116,6 +141,7 @@ class _RequestCardState extends ConsumerState<_RequestCard> {
             Wrap(
               spacing: ManisSpace.s2,
               runSpacing: ManisSpace.s2,
+              crossAxisAlignment: WrapCrossAlignment.center,
               children: [
                 FilledButton(
                   onPressed: enabled ? () => _decide(accept: true) : null,
@@ -125,6 +151,12 @@ class _RequestCardState extends ConsumerState<_RequestCard> {
                   onPressed: enabled ? () => _decide(accept: false) : null,
                   child: const Text('Reject'),
                 ),
+                // Greyed buttons alone don't say why; show the save in flight.
+                if (_saving)
+                  Semantics(
+                    label: 'Saving',
+                    child: const CupertinoActivityIndicator(),
+                  ),
               ],
             ),
           ],
