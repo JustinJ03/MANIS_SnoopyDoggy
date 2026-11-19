@@ -6,8 +6,8 @@ import '../../models/service.dart';
 import '../../utils/formatters.dart';
 
 /// Test login for the mock AuthRepository only (not a real account).
-const mockOwnerEmail = 'owner@bycashlyn.test';
-const mockOwnerPassword = 'manis-demo-2026';
+const mockOwnerEmail = 'admin@gmail.com';
+const mockOwnerPassword = 'admin';
 
 const seedCustomers = [
   Customer(
