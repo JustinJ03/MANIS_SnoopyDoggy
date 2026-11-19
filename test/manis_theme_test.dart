@@ -1,6 +1,6 @@
 import 'dart:math';
 
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:flutter_application_1/theme/manis_theme.dart';
@@ -11,7 +11,10 @@ double contrast(Color a, Color b) {
 }
 
 void main() {
-  for (final (name, c) in [('light', ManisColors.light), ('dark', ManisColors.dark)]) {
+  for (final (name, c) in [
+    ('light', ManisColors.light),
+    ('dark', ManisColors.dark),
+  ]) {
     test('$name: text pairs meet WCAG AA 4.5:1', () {
       final pairs = {
         'ink/surface': (c.ink, c.surface),
@@ -25,13 +28,26 @@ void main() {
         'warning/warningSoft': (c.warning, c.warningSoft),
         'danger/dangerSoft': (c.danger, c.dangerSoft),
       };
-      pairs.forEach((k, p) => expect(contrast(p.$1, p.$2), greaterThanOrEqualTo(4.5), reason: k));
-      expect(contrast(c.lineStrong, c.surface), greaterThanOrEqualTo(3), reason: 'lineStrong/surface');
+      pairs.forEach(
+        (k, p) =>
+            expect(contrast(p.$1, p.$2), greaterThanOrEqualTo(4.5), reason: k),
+      );
+      expect(
+        contrast(c.lineStrong, c.surface),
+        greaterThanOrEqualTo(3),
+        reason: 'lineStrong/surface',
+      );
     });
   }
 
   test('theme builds for both brightnesses', () {
-    expect(manisTheme(Brightness.light).colorScheme.primary, ManisColors.light.action);
-    expect(manisTheme(Brightness.dark).colorScheme.primary, ManisColors.dark.action);
+    expect(
+      manisTheme(Brightness.light).colorScheme.primary,
+      ManisColors.light.action,
+    );
+    expect(
+      manisTheme(Brightness.dark).colorScheme.primary,
+      ManisColors.dark.action,
+    );
   });
 }

@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 /// MANIS design tokens, mirrored from the design system's tokens.json:
 /// https://claude.ai/artifact/51o4DT1bqRRDKLkCcVkPXd
@@ -61,7 +61,7 @@ class ManisColors {
     blush: Color(0xFFEAA9C1),
     inkOnBlush: Color(0xFF2B1A21),
     blushSoft: Color(0xFF3D2631),
-    action: Color(0xFFF6C9D8),
+    action: Color(0xFFF6ECE9),
     onAction: Color(0xFF2B1A21),
     wine: Color(0xFFC25A78),
     rose: Color(0xFFF28AAB),
@@ -93,11 +93,28 @@ const _sans = 'DM Sans';
 const _serif = 'DM Serif Display';
 
 ThemeData manisTheme(Brightness brightness) {
-  final c = brightness == Brightness.dark ? ManisColors.dark : ManisColors.light;
-  TextStyle t(double size, double line, FontWeight w, {String family = _sans, Color? color, double spacing = 0}) =>
-      TextStyle(fontFamily: family, fontSize: size, height: line / size, fontWeight: w, color: color ?? c.ink, letterSpacing: spacing);
+  final c = brightness == Brightness.dark
+      ? ManisColors.dark
+      : ManisColors.light;
+  TextStyle t(
+    double size,
+    double line,
+    FontWeight w, {
+    String family = _sans,
+    Color? color,
+    double spacing = 0,
+  }) => TextStyle(
+    fontFamily: family,
+    fontSize: size,
+    height: line / size,
+    fontWeight: w,
+    color: color ?? c.ink,
+    letterSpacing: spacing,
+  );
 
-  final pill = RoundedRectangleBorder(borderRadius: BorderRadius.circular(ManisRadius.pill));
+  final pill = RoundedRectangleBorder(
+    borderRadius: BorderRadius.circular(ManisRadius.pill),
+  );
   const buttonSize = Size(64, 48);
   final label = t(15, 18, FontWeight.w500);
 
@@ -126,7 +143,13 @@ ThemeData manisTheme(Brightness brightness) {
       outlineVariant: c.line,
     ),
     textTheme: TextTheme(
-      displayMedium: t(40, 42, FontWeight.w400, family: _serif, spacing: -0.4), // display
+      displayMedium: t(
+        40,
+        42,
+        FontWeight.w400,
+        family: _serif,
+        spacing: -0.4,
+      ), // display
       headlineSmall: t(28, 32, FontWeight.w400, family: _serif), // title
       titleLarge: t(24, 28, FontWeight.w400, family: _serif), // price
       titleSmall: t(15, 20, FontWeight.w600), // heading
@@ -135,43 +158,87 @@ ThemeData manisTheme(Brightness brightness) {
       bodySmall: t(12, 16, FontWeight.w400, color: c.inkMuted), // caption
       labelSmall: t(11, 14, FontWeight.w500, spacing: 2.64), // overline, 0.24em
     ),
-    appBarTheme: AppBarTheme(backgroundColor: c.surface, foregroundColor: c.ink, elevation: 0, scrolledUnderElevation: 0),
+    appBarTheme: AppBarTheme(
+      backgroundColor: c.surface,
+      foregroundColor: c.ink,
+      elevation: 0,
+      scrolledUnderElevation: 0,
+    ),
     filledButtonTheme: FilledButtonThemeData(
-      style: FilledButton.styleFrom(backgroundColor: c.action, foregroundColor: c.onAction, minimumSize: buttonSize, shape: pill, textStyle: label),
+      style: FilledButton.styleFrom(
+        backgroundColor: c.action,
+        foregroundColor: c.onAction,
+        minimumSize: buttonSize,
+        shape: pill,
+        textStyle: label,
+      ),
     ),
     elevatedButtonTheme: ElevatedButtonThemeData(
       // The blush "Book Appointment" pill.
-      style: ElevatedButton.styleFrom(backgroundColor: c.blush, foregroundColor: c.inkOnBlush, elevation: 0, minimumSize: buttonSize, shape: pill, textStyle: label),
+      style: ElevatedButton.styleFrom(
+        backgroundColor: c.blush,
+        foregroundColor: c.inkOnBlush,
+        elevation: 0,
+        minimumSize: buttonSize,
+        shape: pill,
+        textStyle: label,
+      ),
     ),
     outlinedButtonTheme: OutlinedButtonThemeData(
-      style: OutlinedButton.styleFrom(foregroundColor: c.ink, side: BorderSide(color: c.lineStrong), minimumSize: buttonSize, shape: pill, textStyle: label),
+      style: OutlinedButton.styleFrom(
+        foregroundColor: c.ink,
+        side: BorderSide(color: c.lineStrong),
+        minimumSize: buttonSize,
+        shape: pill,
+        textStyle: label,
+      ),
     ),
-    textButtonTheme: TextButtonThemeData(style: TextButton.styleFrom(foregroundColor: c.ink, shape: pill)),
+    textButtonTheme: TextButtonThemeData(
+      style: TextButton.styleFrom(foregroundColor: c.ink, shape: pill),
+    ),
     chipTheme: ChipThemeData(
       backgroundColor: c.surfaceRaised,
       selectedColor: c.blush,
       labelStyle: t(14, 18, FontWeight.w500),
       secondaryLabelStyle: t(14, 18, FontWeight.w500, color: c.inkOnBlush),
       side: BorderSide(color: c.line),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(ManisRadius.sm)),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(ManisRadius.sm),
+      ),
       showCheckmark: false,
     ),
     cardTheme: CardThemeData(
       color: c.surfaceRaised,
       elevation: 0,
       margin: EdgeInsets.zero,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(ManisRadius.md), side: BorderSide(color: c.line)),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(ManisRadius.md),
+        side: BorderSide(color: c.line),
+      ),
     ),
     inputDecorationTheme: InputDecorationTheme(
       filled: true,
       fillColor: c.surfaceRaised,
-      border: OutlineInputBorder(borderRadius: BorderRadius.circular(ManisRadius.sm), borderSide: BorderSide(color: c.lineStrong)),
-      enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(ManisRadius.sm), borderSide: BorderSide(color: c.lineStrong)),
-      focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(ManisRadius.sm), borderSide: BorderSide(color: c.action, width: 2)),
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(ManisRadius.sm),
+        borderSide: BorderSide(color: c.lineStrong),
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(ManisRadius.sm),
+        borderSide: BorderSide(color: c.lineStrong),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(ManisRadius.sm),
+        borderSide: BorderSide(color: c.action, width: 2),
+      ),
     ),
     bottomSheetTheme: BottomSheetThemeData(
       backgroundColor: c.surface,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(ManisRadius.lg))),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(
+          top: Radius.circular(ManisRadius.lg),
+        ),
+      ),
     ),
     dividerTheme: DividerThemeData(color: c.line, thickness: 1),
   );
